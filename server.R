@@ -7,7 +7,7 @@ shinyServer(function(input, output, session) {
         mandatoryFilled <-
             vapply(fieldsMandatory,
                    function(x) {
-                       !is.null(input[[x]]) && input[[x]] != ""
+                       !is.null(input[[x]]) && input[[x]] != "" && input[[x]] != "None selected"
                    },
                    logical(1))
         mandatoryFilled <- all(mandatoryFilled)
@@ -31,7 +31,6 @@ shinyServer(function(input, output, session) {
         
         tryCatch({
             saveData(formData())
-            shinyjs::reset("form")
             shinyjs::hide("form")
             shinyjs::show("thankyou_msg")
         },
@@ -46,15 +45,28 @@ shinyServer(function(input, output, session) {
     })
     
     observeEvent(input$submit_another, {
+        shinyjs::reset("form")
         shinyjs::show("form")
+        shinyjs::enable("submit")
         shinyjs::hide("thankyou_msg")
+        lapply(questions, function(x){ shinyjs::reset(x$ID) })
     })  
     
-    output$responsesTable <- DT::renderDataTable(
-        loadData(),
-        rownames = FALSE,
-        options = list(searching = FALSE, lengthChange = FALSE)
-    )
+    observeEvent(input$restart, {
+        shinyjs::reset("form")
+        shinyjs::show("submit")
+        lapply(questions, function(x){ 
+            shinyjs::reset(x$ID)
+            shinyjs::hide(id = paste0(x$ID, "_answer"))
+        })
+    })
+    
+    
+    output$responsesTable <- DT::renderDataTable({
+        DT::datatable(loadData(),
+                      rownames = FALSE,
+                      options = list(searching = FALSE, lengthChange = FALSE))
+    })
     
     output$downloadBtn <- downloadHandler(
         filename = function() { 
@@ -83,6 +95,15 @@ shinyServer(function(input, output, session) {
         shinyjs::toggle("adminPanel")
         shinyjs::reset("adminPanel")
         shinyjs::toggle("adminPanelContainer", condition = !input$getAdmit)
+    })
+    
+    observeEvent(input$getAnswer, {
+        lapply(questions, function(x){
+            shinyjs::show(id = paste0(x$ID, "_answer"))
+        })
+        shinyjs::show("form")
+        shinyjs::hide("thankyou_msg")
+        shinyjs::hide("submit")       
     })
     
 })
